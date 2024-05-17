@@ -40,6 +40,15 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        'api' => [
+            'driver' => 'passport',
+            'provider' => 'users',
+            //Токен передается в явном виде
+            'hash' => false,
+            //Время жизни токена доступа в минутах
+            'tokensExpireIn' => env('TOKEN_EXPIRATION', 60),
+        ],
+
     ],
 
     /*
