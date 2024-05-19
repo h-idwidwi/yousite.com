@@ -50,17 +50,20 @@ class AuthController extends Controller
             return response()->json(['message' => 'Превышено количество активных токенов'], 403);
         }
 
-        // Создание токена доступа
+        // Создание токена доступа с временем жизни в одну минуту
         $tokenResult = $user->createToken('Personal Access Token');
-        $accessToken = $tokenResult->accessToken;
+        $token = $tokenResult->token;
+        $token->expires_at = now()->addMinute();
+        $token->save();
 
         // Возврат успешного ответа с данными токенов
         return response()->json([
-            'access_token' => $accessToken,
+            'access_token' => $tokenResult->accessToken,
             'token_type' => 'Bearer',
-            'expires_at' => $tokenResult->token->expires_at->toDateTimeString()
+            'expires_at' => $token->expires_at->toDateTimeString()
         ]);
     }
+
 
     //Удаление актуального токена
     public function logout(Request $request)
