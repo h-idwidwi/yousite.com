@@ -15,6 +15,7 @@ class isexpiry
             $token = $user->token();
 
             if ($token->expires_at->isPast()) {
+                $token->delete();
                 return response()->json(['message' => 'Токен истек'], 401);
             }
         }
