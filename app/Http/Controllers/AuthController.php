@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AuthLoginRequest;
 use App\Http\Requests\AuthRegisterRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
@@ -11,12 +12,10 @@ use App\Models\User;
 class AuthController extends Controller
 {
     //Регистрация нового пользователя
-    public function register(AuthRegisterRequest $request)
+    public function register(AuthRegisterRequest $request): JsonResponse
     {
-        // Создание DTO из запроса
         $userData = $request->createDTO();
 
-        // Создание нового пользователя
         $user = User::create([
             'username' => $userData->username,
             'email' => $userData->email,
@@ -24,7 +23,6 @@ class AuthController extends Controller
             'birthday' => $userData->birthday,
         ]);
 
-        // Возврат успешного ответа с данными пользователя
         return response()->json($user, 201);
     }
 
@@ -53,7 +51,7 @@ class AuthController extends Controller
         // Создание токена доступа с временем жизни в одну минуту
         $tokenResult = $user->createToken('Personal Access Token');
         $token = $tokenResult->token;
-        $token->expires_at = now()->addMinute();
+        $token->expires_at = now()->addMinutes(30);
         $token->save();
 
         // Возврат успешного ответа с данными токенов
@@ -69,7 +67,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         // Удаление токена пользователя
-        $request->user()->token()->delete();
+        $request->user()->token()->revoke();
 
         // Возврат сообщения об успешном выходе
         return response()->json(['message' => 'Вы вышли из аккаунта!'], 200);
@@ -81,10 +79,10 @@ class AuthController extends Controller
         // Удаление всех токенов пользователя
         $user = $request->user();
         $user->tokens->each(function ($token) {
-            $token->delete();
+            $token->revoke();
         });
 
         // Возврат сообщения об успешном выходе из всех сеансов
-        return response()->json(['message' => 'Вы успешно удалили все токены!'], 200);
+        return response()->json(['message' => 'Вы успешно отозвали все токены!'], 200);
     }
 }

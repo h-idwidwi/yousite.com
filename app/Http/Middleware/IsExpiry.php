@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Laravel\Passport\Token;
 
-class isexpiry
+class isExpiry
 {
     public function handle(Request $request, Closure $next)
     {
