@@ -14,7 +14,7 @@ return [
     */
 
     'defaults' => [
-        'guard' => 'web',
+        'guard' => 'api',
         'passwords' => 'users',
     ],
 
@@ -43,10 +43,6 @@ return [
         'api' => [
             'driver' => 'passport',
             'provider' => 'users',
-            //Токен передается в явном виде
-            'hash' => true,
-            //Время жизни токена доступа в минутах
-            'tokensExpireIn' => env('TOKEN_EXPIRATION', 60),
         ],
 
     ],

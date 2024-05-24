@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Route;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckPermission
@@ -12,33 +11,33 @@ class CheckPermission
     public function handle(Request $request, Closure $next): Response
     {
         $actions = [
-            'getUserRoles' => 'read-user',
-            'giveUserRoles' => 'update-user',
-            'hardDeleteRole' => 'update-user',
-            'softDeleteRole' => 'update-user',
-            'restoreDeletedRole' => 'update-user',
-
-            'getRoles' => 'get-list-role',
-            'getTargetRole' => 'read-role',
-            'createRole' => 'create-role',
-            'updateRole' => 'update-rol',
-            'hardDeleteRole' => 'delete-rol',
-            'softDeleteRole' => 'delete-rol',
-            'restoreDeletedRole' => 'restore-role',
-
-            'getPermissions' => 'get-list-permission',
-            'getTargetPermission' => 'read-permission',
-            'createPermission' => 'create-permission',
-            'updatePermission' => 'update-permission',
-            'hardDeletePermission' => 'delete-permission',
-            'softDeletePermission' => 'delete-permission',
-            'restoreDeletedPermission' => 'restore-permission',
-
-            'getRolePermission' => 'read-role',
-            'addRolePermission' => 'update-role',
-            'hardDeleteRolePermission' => 'update-role',
-            'softDeleteRolePermission' => 'update-role',
-            'restoreDeletedRolePermission' => 'update-role'
+            'getUsers' => ['Guest', 'Admin', 'User'],
+            'getUserRoles' => ['Admin', 'User'],
+            'updateUser' => ['Admin'],
+            'giveUserRoles' => ['Admin'],
+            'hardDeleteRole' => ['Admin'],
+            'softDeleteRole' => ['Admin'],
+            'restoreDeletedRole' => ['Admin'],
+            'userHardDeleteRole' => ['Admin'],
+            'userSoftDeleteRole' => ['Admin'],
+            'userRestoreDeletedRole' => ['Admin'],
+            'me' => ['User', 'Admin'],
+            'getRoles' => ['Admin'],
+            'getTargetRole' => ['Admin'],
+            'createRole' => ['Admin'],
+            'updateRole' => ['Admin'],
+            'getPermissions' => ['Admin'],
+            'getTargetPermission' => ['Admin'],
+            'createPermission' => ['Admin'],
+            'updatePermission' => ['Admin'],
+            'hardDeletePermission' => ['Admin'],
+            'softDeletePermission' => ['Admin'],
+            'restoreDeletedPermission' => ['Admin'],
+            'getRolePermission' => ['Admin'],
+            'addRolePermission' => ['Admin'],
+            'hardDeleteRolePermission' => ['Admin'],
+            'softDeleteRolePermission' => ['Admin'],
+            'restoreDeletedRolePermission' => ['Admin']
         ];
 
         $route = $request->route();
@@ -46,40 +45,21 @@ class CheckPermission
 
         $user = $request->user();
 
-        if ($user) {
-            $userRoles = $request->user()->roles();
-            $roles = [];
-            foreach ($userRoles as $role) {
-                array_push($roles, $role->id);
-            }
-            $admin = in_array(1, $roles);
-            $user = in_array(2, $roles);
-            $guest = in_array(3, $roles);
-
-            if ($admin and ($action == 'hardDeleteRole' or $action == 'softDeleteRole')) {
-                if ($request->user()->id == $request->id and $request->role_id == 1) {
-                    return response()->json(['message' => 'Так делать не надо, админ есть админ'], 403);
-                }
-            }
-
-            if ($user and !$admin) {
-                if ($action != 'getUsers' and $action != 'getUserRoles') {
-                    return response()->json(['message' => $actions[$action]], 403);
-                } elseif ($action == 'getUserRoles') {
-                    if ($request->user()->id != $request->id) {
-                        return response()->json(['message' => $actions[$action]], 403);
-                    }
-                }
-            } elseif ($guest and !$admin) {
-                if ($action != 'getUsers') {
-                    return response()->json(['message' => $actions[$action]], 403);
-                }
+        if (!$user) {
+            if ($action === 'getUsers') {
+                return $next($request);
+            } else {
+                return redirect()->route('getUsers')->with('message', 'Вы не авторизованы');
             }
         } else {
-            if ($action != 'getUsers') {
-                return response()->json(['message' => $actions[$action]], 403);
+            $userRoles = $user->roles()->pluck('name')->toArray();
+
+            foreach ($actions[$action] as $actionRole) {
+                if (in_array($actionRole, $userRoles)) {
+                    return $next($request);
+                }
             }
+            return response()->json(['message' => 'Маршрут перестроен, недостаточно прав!'], 403);
         }
-        return $next($request);
     }
 }

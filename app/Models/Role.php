@@ -2,15 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Role extends Model
 {
-    use HasFactory, SoftDeletes;
-
-    public $table = 'Roles';
+    use SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -22,14 +19,6 @@ class Role extends Model
 
     public function permissions()
     {
-        $role_id = $this->id;
-
-        $permissions_id = RolesAndPermissions::select('permission_id')->where('role_id', $role_id)->get();
-
-        $permissions = $permissions_id->map(function ($id) {
-            return Permission::where('id', $id->permission_id)->first();
-        });
-
-        return $permissions;
+        return $this->belongsToMany(Permission::class, 'roles_and_permissions', 'role_id', 'permission_id');
     }
 }

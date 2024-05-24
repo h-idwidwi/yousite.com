@@ -4,15 +4,16 @@ namespace App\DTO;
 
 class RoleDTO
 {
+    public $id;
     public $name;
     public $description;
     public $code;
     public $created_by;
     public $deleted_by;
 
-
-    public function __construct($name, $description, $code, $created_by, $deleted_by)
+    public function __construct($id, $name, $description, $code, $created_by, $deleted_by)
     {
+        $this->id = $id;
         $this->name = $name;
         $this->description = $description;
         $this->code = $code;

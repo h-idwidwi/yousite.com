@@ -2,88 +2,98 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\DTO\PermissionCreateDTO;
+use App\DTO\PermissionDTO;
+use App\Http\Requests\CreateRoleAndPermissionRequest;
+use App\Http\Requests\UpdatePermissionRequest;
+use App\Models\RolesAndPermissions;
+use Illuminate\Http\JsonResponse;
 use App\DTO\PermissionCollectionDTO;
 use App\Models\Permission;
 use App\Http\Requests\CreatePermissionRequest;
-use App\Http\Requests\ChangePermissionRequest;
-use Illuminate\Support\Facades\DB;
 
 class PermissionController extends Controller
 {
-    public function getPermissions(Request $request) {
+    public function getPermissions(): JsonResponse
+    {
         $permissions = new PermissionCollectionDTO(Permission::all());
         return response()->json($permissions->permissions);
     }
 
-    public function getTargetPermission(Request $request) {
-        return response()->json(Permission::where('id', $request->id)->first());
-    }
-
-    public function createPermission(CreatePermissionRequest $request) {
-
-        $user = $request->user();
-
-        $new_permission = Permission::create([
-            'name' => $request->input('name'),
-            'description' => $request->input('description'),
-            'code' => $request->input('code'),
-            'created_by' => $user->id,
-        ]);
-
-        return response()->json($new_permission);
-    }
-
-    public function updatePermission(ChangePermissionRequest $request) {
-
-        $user = $request->user();
-
-        $permission = Permission::where('id', $request->id)->first();
-
-        $permission->update([
-            'name' => $request->input('name'),
-            'description' => $request->input('description'),
-            'code' => $request->input('code'),
-        ]);
-
+    public function getTargetPermission($id): JsonResponse
+    {
+        $permission = Permission::findOrFail($id);
         return response()->json($permission);
     }
 
-    public function hardDeletePermission(ChangePermissionRequest $request) {
+    public function createPermission(CreatePermissionRequest $permissionRequest, CreateRoleAndPermissionRequest $rolePermissionRequest): JsonResponse
+    {
+        $user = $permissionRequest->user();
 
-        $permission_id = $request->id;
+        $newPermission = Permission::create([
+            'name' => $permissionRequest->input('name'),
+            'description' => $permissionRequest->input('description'),
+            'code' => $permissionRequest->input('code'),
+            'created_by' => $user->id,
+        ]);
 
-        $permission = Permission::withTrashed()->find($permission_id);
+        $role_id = $rolePermissionRequest->input('role_id');
+        $permission_id = $newPermission->id;
 
-        $permission->forcedelete();
+        $count = RolesAndPermissions::where('role_id', $role_id)->where('permission_id', $permission_id)->count();
+        if ($count) {
+            return response()->json(['status' => 501]);
+        }
 
-        return response()->json(['status' => '200']);
+        RolesAndPermissions::create([
+            'role_id' => $role_id,
+            'permission_id' => $permission_id,
+            'created_by' => $user->id
+        ]);
+
+        return response()->json(new PermissionCreateDTO($newPermission->id, $newPermission->name, $newPermission->description, $newPermission->code, $newPermission->created_by), 201);
     }
 
-    public function softDeletePermission(ChangePermissionRequest $request) {
+    public function updatePermission(UpdatePermissionRequest $request, $id): JsonResponse
+    {
+        $permission = Permission::findOrFail($id);
 
-        $permission_id = $request->id;
-        $user = $request->user();
+        $permissionDTO = $request->createDTO($permission->id);
 
-        $permission = Permission::where('id', $permission_id)->first();
+        $updateData = array_filter([
+            'name' => $permissionDTO->name,
+            'code' => $permissionDTO->code,
+            'description' => $permissionDTO->description,
+            'created_by' => $permissionDTO->created_by,
+            'deleted_by' => $permissionDTO->deleted_by,
+        ], function($value) {
+            return !is_null($value);
+        });
 
-        $permission->deleted_by = $user->id;
+        $permission->update($updateData);
+
+        return response()->json(new PermissionDTO($permission->id, $permission->name, $permission->description, $permission->code, $permission->created_by, $permission->deleted_by));
+    }
+
+    public function hardDeletePermission($id): JsonResponse
+    {
+        $permission = Permission::withTrashed()->findOrFail($id);
+        $permission->forceDelete();
+        return response()->json(['message' => 'Разрешение жестко удалено']);
+    }
+
+    public function softDeletePermission($id): JsonResponse
+    {
+        $permission = Permission::findOrFail($id);
         $permission->delete();
-        $permission->save();
 
-        return response()->json(['status' => '200']);
+        return response()->json(['message' => 'Разрешение мягко удалено'], 200);
     }
 
-    public function restoreDeletedPermission(ChangePermissionRequest $request) {
-
-        $permission_id = $request->id;
-
-        $permission = Permission::withTrashed()->find($permission_id);
-
+    public function restoreDeletedPermission($id): JsonResponse
+    {
+        $permission = Permission::withTrashed()->findOrFail($id);
         $permission->restore();
-        $permission->deleted_by = null;
-        $permission->save();
-
-        return response()->json(['status' => '200']);
+        return response()->json(new PermissionDTO($permission->id, $permission->name, $permission->code, $permission->description, $permission->created_by, $permission->deleted_by));
     }
 }

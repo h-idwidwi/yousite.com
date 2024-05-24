@@ -2,19 +2,35 @@
 
 namespace App\DTO;
 
+use Illuminate\Support\Collection;
+
 class RoleAndPermissionDTO
 {
-    public $role_id;
-    public $permission_id;
-    public $created_by;
-    public $deleted_by;
+    public Collection $roles;
 
-
-    public function __construct( $role_id, $permission_id, $created_by, $deleted_by)
+    public function __construct(Collection $roles)
     {
-        $this->role_id = $role_id;
-        $this->permission_id = $permission_id;
-        $this->created_by = $created_by;
-        $this->deleted_by = $deleted_by;
+        $this->roles = $roles->map(function ($role) {
+            return [
+                'role' => new RoleDTO(
+                    $role->id,
+                    $role->name,
+                    $role->description,
+                    $role->code,
+                    $role->created_by,
+                    $role->deleted_by
+                ),
+                'permissions' => $role->permissions->map(function ($permission) {
+                    return new PermissionDTO(
+                        $permission->id,
+                        $permission->name,
+                        $permission->description,
+                        $permission->code,
+                        $permission->created_by,
+                        $permission->deleted_by
+                    );
+                }),
+            ];
+        });
     }
 }

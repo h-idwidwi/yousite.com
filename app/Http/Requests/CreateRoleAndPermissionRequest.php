@@ -19,25 +19,13 @@ class CreateRoleAndPermissionRequest extends FormRequest
         return false;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
-    public function rules(): array
-    {
-        return [
-
-        ];
-    }
-
     public function createDTO(): RoleAndPermissionDTO
     {
         return new RoleAndPermissionDTO(
             $this->input('role_id'),
             $this->input('permission_id'),
             $this->input('deleted_by'),
-            $this->input('created_by')
+            $this->input('created_by'),
         );
     }
 }

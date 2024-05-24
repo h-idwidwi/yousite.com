@@ -2,105 +2,138 @@
 
 namespace App\Http\Controllers;
 
+use App\DTO\UpdateUserDTO;
+use App\DTO\UserDTO;
+use App\Http\Requests\UpdateUserRequest;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\DTO\UserCollectionDTO;
 use App\DTO\UserAndRoleCollectionDTO;
 use App\Models\UsersAndRoles;
-use App\Models\Role;
-use App\DTO\RoleCollectionDTO;
-use App\Http\Requests\ChangeUserAndRoleRequest;
 use App\Http\Requests\CreateUserAndRoleRequest;
 use App\Http\Requests\UserRequest;
 
 class UserController extends Controller
 {
-    public function getUsers(Request $request) {
-        $users = new UserCollectionDTO();
-        return response()->json($users->users);
+    // Метод для получения всех пользователей
+    public function getUsers(): JsonResponse
+    {
+        $users = User::all();
+        return response()->json(new UserCollectionDTO($users));
     }
 
-    public function getUserRoles(UserRequest $request) {
-
+    // Метод для получения ролей и разрешений пользователя
+    public function getUserRoles(UserRequest $request): JsonResponse
+    {
         $user_id = $request->id;
-
-        $roles_id = UsersAndRoles::select('role_id')->where('user_id', $user_id)->get();
-
-        $roles = $roles_id->map(function($id) {
-            return Role::where('id', $id->role_id)->first();
-        });
-
-        return response()->json($roles);
+        $user = User::with('roles')->findOrFail($user_id);
+        $roles = $user->roles;
+        $dto = new UserAndRoleCollectionDTO($roles);
+        return response()->json($dto);
     }
 
-    public function giveUserRoles(CreateUserAndRoleRequest $request) {
-
-        $user_id = $request->id;
-
+    // Метод для назначения роли пользователю
+    public function giveUserRoles(CreateUserAndRoleRequest $request, $id): JsonResponse
+    {
+        $user_id = $id;
         $role_id = $request->input('role_id');
-
-        $count = UsersAndRoles::where('user_id', $user_id)->where('role_id', $role_id)->count();
-
-        if ($count) {
-            return response()->json(['status' => '501']);
+        $exists = UsersAndRoles::where('user_id', $user_id)->where('role_id', $role_id)->exists();
+        if ($exists) {
+            return response()->json(['status' => 'Такая роль уже назначена'], 409);
         }
-
         UsersAndRoles::create([
             'user_id' => $user_id,
             'role_id' => $role_id,
             'created_by' => $request->user()->id,
         ]);
-        return response()->json(['status' => '200']);
-
+        return response()->json(['status' => 'Роль успешно назначена'], 200);
     }
 
-    public function hardDeleteRole(ChangeUserAndRoleRequest $request) {
-        $user_id = $request->id;
-        $role_id = $request->role_id;
+    // Метод для жесткого удаления роли у пользователя
+    public function hardDeleteRole($r_id, $id): JsonResponse
+    {
+        $user_id = $id;
+        $role_id = $r_id;
 
-        $userAndRoles = UsersAndRoles::withTrashed()->where('user_id', $user_id)->where('role_id', $role_id);
+        $userAndRoles = UsersAndRoles::withTrashed()->where('user_id', $user_id)->where('role_id', $role_id)->firstOrFail();
 
-        $userAndRoles->forcedelete();
+        $userAndRoles->forceDelete();
 
-        return response()->json(['status' => '200']);
+        return response()->json(['status' => 'Роль пользователя ликвидирована'], 200);
     }
 
-    public function softDeleteRole(ChangeUserAndRoleRequest $request){
+    // Метод для мягкого удаления роли у пользователя
+    public function softDeleteRole(UserRequest $request, $r_id, $id): JsonResponse
+    {
+        $user_id = $id;
+        $role_id = $r_id;
 
-        $user_id = $request->id;
-        $role_id = $request->role_id;
-
-        $userAndRoles = UsersAndRoles::where('user_id', $user_id)->where('role_id', $role_id)->first();
+        $userAndRoles = UsersAndRoles::where('user_id', $user_id)->where('role_id', $role_id)->firstOrFail();
 
         $userAndRoles->deleted_by = $request->user()->id;
         $userAndRoles->delete();
-        $userAndRoles->save();
 
-        return response()->json(['status' => '200']);
+        return response()->json(['status' => 'Роль пользователя мягко удалена'], 200);
     }
 
-    public function restoreDeletedRole(ChangeUserAndRoleRequest $request) {
-        $user_id = $request->id;
-        $role_id = $request->role_id;
+    // Метод для восстановления мягко удаленной роли у пользователя
+    public function restoreDeletedRole(UserRequest $request, $r_id, $id): JsonResponse
+    {
+        $user_id = $id;
+        $role_id = $r_id;
 
-        $userAndRoles = UsersAndRoles::withTrashed()->where('user_id', $user_id)->where('role_id', $role_id)->first();
+        $userAndRoles = UsersAndRoles::withTrashed()->where('user_id', $user_id)->where('role_id', $role_id)->firstOrFail();
 
         $userAndRoles->restore();
         $userAndRoles->deleted_by = null;
         $userAndRoles->save();
 
-        return response()->json(['status' => '200']);
+        return response()->json(['status' => 'Роль пользователя восстановлена'], 200);
     }
-    public function me(Request $request)
+
+    // Метод для получения информации о текущем пользователе
+    public function me(UserRequest $request): JsonResponse
     {
         $user = $request->user();
 
-        return response()->json(["user" => $user]);
+        $userDTO = new UserDTO(
+            $user->id,
+            $user->username,
+            $user->email,
+            $user->birthday,
+            $user->created_at
+        );
+
+        return response()->json(["user" => $userDTO]);
     }
 
-    public function tokens(Request $request) {
+    // Метод для получения токенов текущего пользователя
+    public function tokens(Request $request): JsonResponse
+    {
         $user = $request->user();
         $tokens = $user->tokens;
 
         return response()->json(['tokens' => $tokens]);
+    }
+
+    // Метод для обновления информации о пользователе
+    public function updateUser(UpdateUserRequest $request, $id): JsonResponse
+    {
+        $user = User::findOrFail($id);
+
+        $userDTO = $request->createDTO($user->id);
+
+        $updateData = array_filter([
+            'username' => $userDTO->username,
+            'email' => $userDTO->email,
+            'password' => $userDTO->password ? bcrypt($userDTO->password) : null,
+            'birthday' => $userDTO->birthday,
+        ], function($value) {
+            return !is_null($value);
+        });
+
+        $user->update($updateData);
+        return response()->json(new UpdateUserDTO($user->id, $user->username, $user->email, $user->password, $user->birthday, $user->created_at), 201);
     }
 }
