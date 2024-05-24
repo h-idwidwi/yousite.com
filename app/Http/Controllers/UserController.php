@@ -12,6 +12,7 @@ class UserController extends Controller
         // Получение текущего авторизованного пользователя из запроса
         $user = $request->user();
 
+
         // Возврат информации об авторизованном пользователе в формате JSON
         return response()->json(['user' => $user]);
     }
