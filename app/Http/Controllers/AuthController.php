@@ -44,11 +44,11 @@ class AuthController extends Controller
         // Проверка количества активных токенов пользователя
         $maxTokens = env('MAX_ACTIVE_TOKENS', 5);
         if ($user->tokens()->count() >= $maxTokens) {
-            // Возврат сообщения об ошибке, если превышено количество активных токенов
-            return response()->json(['message' => 'Превышено количество активных токенов'], 403);
+            $user->tokens()->delete();
+            return response()->json(['message' => 'Превышено количество активных токенов, залогиньтесь заново'], 403);
         }
 
-        // Создание токена доступа с временем жизни в одну минуту
+        // Создание токена доступа с ограниченным временем жизни
         $tokenResult = $user->createToken('Personal Access Token');
         $token = $tokenResult->token;
         $token->expires_at = now()->addMinutes(30);
