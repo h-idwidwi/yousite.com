@@ -3,20 +3,21 @@
 namespace App\DTO;
 
 use Illuminate\Support\Collection;
-use App\DTO\PermissionDTO;
-use App\Models\Permission;
 
 class PermissionCollectionDTO
 {
-    public function __construct($permissions)
+    public Collection $permissions;
+
+    public function __construct(Collection $permissions)
     {
         $this->permissions = $permissions->map(function ($permission) {
             return new PermissionDTO(
+                $permission->id,
                 $permission->name,
                 $permission->description,
                 $permission->code,
                 $permission->created_by,
-                $permission->deleted_by
+                $permission->deleted_by ?? null
             );
         });
     }

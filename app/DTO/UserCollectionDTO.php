@@ -3,14 +3,12 @@
 namespace App\DTO;
 
 use Illuminate\Support\Collection;
-use App\DTO\UserDTO;
-use App\Models\User;
 
 class UserCollectionDTO
 {
-    public function __construct()
+    public Collection|\Illuminate\Database\Eloquent\Collection $users;
+    public function __construct(Collection $users)
     {
-        $users = User::all();
         $this->users = $users->map(function ($user) {
             return new UserDTO(
                 $user->id,

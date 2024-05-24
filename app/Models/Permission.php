@@ -10,13 +10,13 @@ class Permission extends Model
 {
     use HasFactory, SoftDeletes;
 
-    public $table = 'Permissions';
+    public $table = 'permissions';
 
     protected $fillable = [
         'name',
         'description',
         'code',
         'created_by',
-        'deleted_by'
+        'deleted_by',
     ];
 }

@@ -6,7 +6,7 @@ use App\DTO\RoleDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
-class UpdateRoleRequest extends FormRequest
+class UpdatePermissionRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -19,16 +19,16 @@ class UpdateRoleRequest extends FormRequest
     public function rules()
     {
         return [
-            'name' => 'string|max:255|unique:roles,name,',
-            'code' => 'string|max:255|unique:roles,code,',
+            'name' => 'string|max:255|unique:permissions,name,',
+            'code' => 'string|max:255|unique:permissions,code,',
             'description' => 'nullable|string',
         ];
     }
 
-    public function createDTO($roleId)
+    public function createDTO($permissionId)
     {
         return new RoleDTO(
-            $roleId,
+            $permissionId,
             $this->input('name'),
             $this->input('description'),
             $this->input('code'),

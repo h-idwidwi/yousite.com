@@ -2,22 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\DTO\RoleAndPermissionCollectionDTO;
+use App\DTO\RoleAndPermissionDTO;
+use App\DTO\RoleCreateDTO;
 use App\Models\Role;
 use App\Http\Requests\CreateRoleRequest;
 use App\Http\Requests\UpdateRoleRequest;
-use App\DTO\RoleCollectionDTO;
 use App\DTO\RoleDTO;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class RoleController extends Controller
 {
-    public function index()
+    public function getRoles(): JsonResponse
     {
         $roles = Role::all();
-        return response()->json(new RoleCollectionDTO($roles));
+        return response()->json(new RoleAndPermissionCollectionDTO($roles));
     }
 
-    public function store(CreateRoleRequest $request)
+    public function getTargetRole($id): JsonResponse
+    {
+        $role = Role::withTrashed()->findOrFail($id);
+        $rolesCollection = collect([$role]);
+        return response()->json(new RoleAndPermissionDTO($rolesCollection));
+    }
+
+    public function createRole(CreateRoleRequest $request): JsonResponse
     {
         $roleDTO = $request->createDTO();
         $role = Role::create([
@@ -25,40 +34,48 @@ class RoleController extends Controller
             'code' => $roleDTO->code,
             'description' => $roleDTO->description,
         ]);
-        return response()->json(new RoleDTO($role->id, $role->name, $role->code, $role->description), 201);
+        return response()->json(new RoleCreateDTO($role->description, $role->name, $role->code), 201);
     }
 
-    public function show(Role $role)
+    public function updateRole(UpdateRoleRequest $request, $id): JsonResponse
     {
-        return response()->json(new RoleDTO($role->id, $role->name, $role->code, $role->description));
-    }
+        $role = Role::findOrFail($id);
 
-    public function update(UpdateRoleRequest $request, Role $role)
-    {
-        $roleDTO = $request->createDTO();
-        $role->update([
+        $roleDTO = $request->createDTO($role->id);
+
+        $updateData = array_filter([
             'name' => $roleDTO->name,
             'code' => $roleDTO->code,
             'description' => $roleDTO->description,
-        ]);
-        return response()->json(new RoleDTO($role->id, $role->name, $role->code, $role->description));
+            'created_by' => $roleDTO->created_by,
+            'deleted_by' => $roleDTO->deleted_by,
+        ], function($value) {
+            return !is_null($value);
+        });
+
+        $role->update($updateData);
+
+        return response()->json(new RoleDTO($role->id, $role->name, $role->description, $role->code, $role->created_by, $role->deleted_by));
     }
 
-    public function destroy(Role $role)
+    public function hardDeleteRole($id): JsonResponse
     {
+        $role = Role::withTrashed()->findOrFail($id);
+        $role->forceDelete();
+        return response()->json('Роль ликвидирована', 201);
+    }
+
+    public function softDeleteRole($id): JsonResponse
+    {
+        $role = Role::findOrFail($id);
         $role->delete();
-        return response()->json(null, 204);
+        return response()->json('Роль мягко удалена', 201);
     }
 
-    public function attachPermission(Request $request, Role $role)
+    public function restoreDeletedRole($id): JsonResponse
     {
-        $role->permissions()->attach($request->input('permission_id'));
-        return response()->json(null, 204);
-    }
-
-    public function detachPermission(Request $request, Role $role, $permissionId)
-    {
-        $role->permissions()->detach($permissionId);
-        return response()->json(null, 204);
+        $role = Role::withTrashed()->findOrFail($id);
+        $role->restore();
+        return response()->json(new RoleDTO($role->id, $role->name, $role->code, $role->description, $role->created_by, $role->deleted_by), 201);
     }
 }

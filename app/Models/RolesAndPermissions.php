@@ -10,10 +10,9 @@ class RolesAndPermissions extends Model
 {
     use HasFactory, SoftDeletes;
 
-    public $table = 'RolesAndPermissions';
+    public $table = 'roles_and_permissions';
 
     protected $fillable = [
-        'name',
         'role_id',
         'permission_id',
         'created_by',
