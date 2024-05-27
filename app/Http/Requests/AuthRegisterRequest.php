@@ -32,4 +32,3 @@ class AuthRegisterRequest extends FormRequest
         );
     }
 }
-

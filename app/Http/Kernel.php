@@ -4,6 +4,7 @@ namespace App\Http;
 
 use App\Http\Middleware\AuthCheck;
 use App\Http\Middleware\Check;
+use App\Http\Middleware\CheckPermission;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
 class Kernel extends HttpKernel
@@ -63,7 +64,8 @@ class Kernel extends HttpKernel
         'signed' => \App\Http\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        'isExpiry' => \App\Http\Middleware\isExpiry::class,
-        'auth.check' => \App\Http\Middleware\AuthCheck::class,
+        'IsExpiry' => \App\Http\Middleware\isExpiry::class,
+        'AuthCheck' => \App\Http\Middleware\AuthCheck::class,
+        'CheckPermission' => CheckPermission::class,
     ];
 }
