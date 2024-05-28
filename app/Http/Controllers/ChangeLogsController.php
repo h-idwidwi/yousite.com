@@ -25,20 +25,20 @@ class ChangeLogsController extends Controller
     }
 
     public function getRoleLogs($id) {
-        $logsRole = ChangeLogs::where('entity_type', 'Role')->where('entity_id', $id)->get();
+        $logsRole = ChangeLogs::where('entity_type', 'roles')->where('entity_id', $id)->get();
 
-        $logsUsersAndRoles = ChangeLogs::where('entity_type', 'UsersAndRoles')->where('entity_id', $id)->get();
+        $logsUsersAndRoles = ChangeLogs::where('entity_type', 'users_and_roles')->where('entity_id', $id)->get();
 
-        $logsRolesAndPermissions = ChangeLogs::where('entity_type', 'RolesAndPermissions')->where('entity_id', $id)->get();
+        $logsRolesAndPermissions = ChangeLogs::where('entity_type', 'roles_and_permissions')->where('entity_id', $id)->get();
 
         $logs = $logsRole->concat($logsUsersAndRoles)->concat($logsRolesAndPermissions);
         return response()->json($logs);
     }
 
     public function getPermissionLogs($id) {
-        $logsPermission = ChangeLogs::where('entity_type', 'Permission')->where('entity_id', $id)->get();
+        $logsPermission = ChangeLogs::where('entity_type', 'permissions')->where('entity_id', $id)->get();
 
-        $logsRolesAndPermissions = ChangeLogs::where('entity_type', 'RolesAndPermissions')->where('entity_id', $id)->get();
+        $logsRolesAndPermissions = ChangeLogs::where('entity_type', 'roles_and_permissions')->where('entity_id', $id)->get();
 
         $logs = $logsPermission->concat($logsRolesAndPermissions);
         return response()->json($logs);
