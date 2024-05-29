@@ -51,6 +51,8 @@ Route::middleware('CheckPermission')->group(function () {
 
 Route::prefix('auth')->group(function() {
     Route::post('login', [AuthController::class, 'login'])->name('login');
+    Route::post('/2fa/verify', [AuthController::class, 'confirm2FACode'])->middleware('IsExpiry');
+    Route::post('/2fa/resend', [AuthController::class, 'resendCode']);
     Route::middleware('AuthCheck')->group(function (){
         Route::post('register', [AuthController::class, 'register'])->name('register');
     });

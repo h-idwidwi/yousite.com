@@ -32,4 +32,8 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Role::class, 'users_and_roles', 'user_id', 'role_id');
     }
+    public function twoFactorCodes()
+    {
+        return $this->hasMany(TwoFactorCode::class);
+    }
 }
