@@ -44,9 +44,7 @@ Route::middleware('CheckPermission')->group(function () {
 
 Route::prefix('auth')->group(function() {
     Route::post('login', [AuthController::class, 'login'])->name('login');
-    Route::middleware('AuthCheck')->group(function (){
-        Route::post('register', [AuthController::class, 'register'])->name('register');
-    });
+    Route::post('register', [AuthController::class, 'register'])->name('register')->middleware('AuthCheck');
     Route::middleware(['auth:api', 'IsExpiry'])->group(function () {
         Route::get('me', [UserController::class, 'me'])->name('me');
         Route::post('logout', [AuthController::class, 'logout'])->name('logout');
