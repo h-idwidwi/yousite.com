@@ -9,7 +9,9 @@ use App\Models\Role;
 use App\Http\Requests\CreateRoleRequest;
 use App\Http\Requests\UpdateRoleRequest;
 use App\DTO\RoleDTO;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
 
 class RoleController extends Controller
 {
@@ -65,9 +67,12 @@ class RoleController extends Controller
         return response()->json('Роль ликвидирована', 201);
     }
 
-    public function softDeleteRole($id): JsonResponse
+    public function softDeleteRole($id, Request $request): JsonResponse
     {
         $role = Role::findOrFail($id);
+        $role->deleted_by = $request->user()->id;
+        $role->save();
+        $role->deleted_at = Carbon::now();
         $role->delete();
         return response()->json('Роль мягко удалена', 201);
     }

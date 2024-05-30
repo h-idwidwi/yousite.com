@@ -7,10 +7,13 @@ use App\DTO\PermissionDTO;
 use App\Http\Requests\CreateRoleAndPermissionRequest;
 use App\Http\Requests\UpdatePermissionRequest;
 use App\Models\RolesAndPermissions;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\DTO\PermissionCollectionDTO;
 use App\Models\Permission;
 use App\Http\Requests\CreatePermissionRequest;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class PermissionController extends Controller
 {
@@ -82,9 +85,12 @@ class PermissionController extends Controller
         return response()->json(['message' => 'Разрешение жестко удалено']);
     }
 
-    public function softDeletePermission($id): JsonResponse
+    public function softDeletePermission($id, Request $request): JsonResponse
     {
         $permission = Permission::findOrFail($id);
+        $permission->deleted_by = $request->user()->id;
+        $permission->save();
+        $permission->deleted_at = Carbon::now();
         $permission->delete();
 
         return response()->json(['message' => 'Разрешение мягко удалено'], 200);
