@@ -18,7 +18,7 @@ class AuthRegisterRequest extends FormRequest
             'username' => 'required|string|regex:/^[A-Z][a-zA-Z]{6,}$/|unique:users|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'birthday' => 'required|date',
+            'birthday' => 'required|date|date_format:Y-m-d',
         ];
     }
 
