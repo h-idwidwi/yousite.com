@@ -63,8 +63,8 @@ class AuthController extends Controller
         }
     }
 
-    public function register(AuthRegisterRequest $request)
-    {
+    public function register(AuthRegisterRequest $request) {
+
         $userData = $request->createDTO();
 
         $user = User::create([
@@ -83,6 +83,7 @@ class AuthController extends Controller
         return response()->json($user, 201);
     }
 
+    //Аутентификация пользователя
     public function login(AuthLoginRequest $request)
     {
         $userdata = $request->createDTO();
@@ -92,7 +93,6 @@ class AuthController extends Controller
         if (!$user || !Hash::check($userdata->password, $user->password)) {
             return response()->json(['message' => 'Пользователь не авторизован'], 401);
         }
-
         $lastCode = $user->twoFactorCodes()->orderBy('created_at', 'desc')->first();
         if ($lastCode && $lastCode->created_at->diffInSeconds(now()) < 30) {
             return response()->json(['message' => 'Вы запрашиваете код слишком часто. Попробуйте позже.'], 429);
@@ -107,6 +107,21 @@ class AuthController extends Controller
         $request->validate([
             'username' => 'required',
             'code' => 'required|numeric',
+        $maxTokens = env('MAX_ACTIVE_TOKENS', 5);
+        if ($user->tokens()->count() >= $maxTokens) {
+            $user->tokens()->delete();
+            return response()->json(['message' => 'Превышено количество активных токенов, залогиньтесь заново'], 403);
+        }
+
+        $tokenResult = $user->createToken('Personal Access Token');
+        $token = $tokenResult->token;
+        $token->expires_at = now()->addMinutes(30);
+        $token->save();
+
+        return response()->json([
+            'access_token' => $tokenResult->accessToken,
+            'token_type' => 'Bearer',
+            'expires_at' => $token->expires_at->toDateTimeString()
         ]);
 
         $user = User::where('username', $request->username)->firstOrFail();
@@ -159,8 +174,8 @@ class AuthController extends Controller
     {
         $user = $request->user();
         $token = $user->token();
-        $token->delete();
         ItIsNotToken::where('token_id', $token->id)->delete();
+        $token->delete();
         return response()->json(['message' => 'Вы вышли из аккаунта!'], 200);
     }
 
