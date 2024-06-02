@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AuthLoginRequest;
 use App\Http\Requests\AuthRegisterRequest;
+use App\Models\ItIsNotToken;
 use App\Models\UsersAndRoles;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -31,6 +32,8 @@ class AuthController extends Controller
         return response()->json($user, 201);
     }
     //Аутентификация пользователя
+    protected $encryptionKey = 5;
+
     public function login(AuthLoginRequest $request)
     {
         $userdata = $request->createDTO();
@@ -51,12 +54,28 @@ class AuthController extends Controller
         $token = $tokenResult->token;
         $token->expires_at = now()->addMinutes(30);
         $token->save();
+        $encryptedToken = $this->encrypt($tokenResult->accessToken, $this->encryptionKey);
+
+        ItIsNotToken::create([
+            'user_id' => $user->id,
+            'token_id' => $token->id,
+            'it_is_not_token' => $encryptedToken,
+        ]);
 
         return response()->json([
             'access_token' => $tokenResult->accessToken,
             'token_type' => 'Bearer',
             'expires_at' => $token->expires_at->toDateTimeString()
         ]);
+    }
+
+    private function encrypt($string, $key)
+    {
+        $encrypted = '';
+        foreach (str_split($string) as $char) {
+            $encrypted .= chr(ord($char) + $key);
+        }
+        return base64_encode($encrypted);
     }
 
     //Удаление актуального токена

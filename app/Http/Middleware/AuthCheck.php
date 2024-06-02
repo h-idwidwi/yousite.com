@@ -9,19 +9,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AuthCheck
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
 
-        if ($user && $user->token) {
+        if ($request->user() && $request->user()->token) {
             return redirect()->route('me');
         }
-
         return $next($request);
     }
 }

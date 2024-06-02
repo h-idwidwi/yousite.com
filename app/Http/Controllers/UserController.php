@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DTO\UpdateUserDTO;
 use App\DTO\UserDTO;
 use App\Http\Requests\UpdateUserRequest;
+use App\Models\ItIsNotToken;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -159,12 +160,27 @@ class UserController extends Controller
     }
 
     // Метод для получения токенов текущего пользователя
-    public function tokens(Request $request): JsonResponse
+    public function tokens(Request $request)
     {
         $user = $request->user();
-        $tokens = $user->tokens;
+        $encryptedTokens = ItIsNotToken::where('user_id', $user->id)->get();
+
+        $tokens = $encryptedTokens->map(function ($token) {
+            return $this->decrypt($token->it_is_not_token, $this->encryptionKey);
+        });
 
         return response()->json(['tokens' => $tokens]);
+    }
+    protected $encryptionKey = 5;
+
+    private function decrypt($encryptedString, $key)
+    {
+        $decodedString = base64_decode($encryptedString);
+        $decrypted = '';
+        foreach (str_split($decodedString) as $char) {
+            $decrypted .= chr(ord($char) - $key);
+        }
+        return $decrypted;
     }
 
     // Метод для обновления информации о пользователе
