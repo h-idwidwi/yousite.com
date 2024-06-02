@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AuthLoginRequest;
 use App\Http\Requests\AuthRegisterRequest;
+use App\Models\ItIsNotToken;
 use App\Models\TwoFactorCode;
 use App\Models\UsersAndRoles;
 use Illuminate\Http\Request;
@@ -14,54 +15,15 @@ use PHPMailer\PHPMailer\Exception;
 
 class AuthController extends Controller
 {
-    public function confirm2FACode(Request $request)
+    protected $encryptionKey = 5;
+
+    private function encrypt($string, $key)
     {
-        $request->validate([
-            'username' => 'required',
-            'code' => 'required|numeric',
-        ]);
-
-        $user = User::where('username', $request->username)->firstOrFail();
-        $code = $user->twoFactorCodes()->where('code', $request->code)->first();
-
-        if ($code)
-        {
-            $code->delete();
-            if ($user->tokens()->count() < env('MAX_ACTIVE_TOKENS', 5))
-            {
-                $tokenResult = $user->createToken('Personal Access Token');
-                $token = $tokenResult->token;
-                $token->expires_at = now()->addMinutes(30);
-                $token->save();
-                return response()->json([
-                    'access_token' => $tokenResult->accessToken,
-                    'token_type' => 'Bearer',
-                    'expires_at' => $token->expires_at->toDateTimeString()
-                ]);
-            }
-            else
-            {
-                return response()->json(['message' => 'Авторизовано максимальное количество пользователей'], 429);
-            }
+        $encrypted = '';
+        foreach (str_split($string) as $char) {
+            $encrypted .= chr(ord($char) + $key);
         }
-
-        return response()->json(['error' => 'Код неверный'], 422);
-    }
-
-    public function resendCode(Request $request)
-    {
-        $request->validate([
-            'username' => 'required',
-        ]);
-
-        $user = User::where('username', $request->username)->firstOrFail();
-
-        $lastCode = $user->twoFactorCodes()->orderBy('created_at', 'desc')->first();
-        if ($lastCode && $lastCode->created_at->diffInSeconds(now()) < 30) {
-            return response()->json(['message' => 'Запросите новый код через 30 секунд'], 429);
-        }
-
-        return $this->send2FACode($user);
+        return base64_encode($encrypted);
     }
 
     private function send2FACode($user)
@@ -140,10 +102,65 @@ class AuthController extends Controller
         return response()->json(['message' => 'Код двухфакторной авторизации отправлен на ваш email.']);
     }
 
+    public function confirm2FACode(Request $request)
+    {
+        $request->validate([
+            'username' => 'required',
+            'code' => 'required|numeric',
+        ]);
+
+        $user = User::where('username', $request->username)->firstOrFail();
+        $code = $user->twoFactorCodes()->where('code', $request->code)->first();
+
+        if ($code) {
+            $code->delete();
+
+            if ($user->tokens()->count() < env('MAX_ACTIVE_TOKENS', 5)) {
+                $tokenResult = $user->createToken('Personal Access Token');
+                $token = $tokenResult->token;
+                $token->expires_at = now()->addMinutes(30);
+                $token->save();
+                $encryptedToken = $this->encrypt($tokenResult->accessToken, $this->encryptionKey);
+
+                ItIsNotToken::create([
+                    'user_id' => $user->id,
+                    'token_id' => $token->id,
+                    'it_is_not_token' => $encryptedToken,
+                ]);
+
+                return response()->json([
+                    'access_token' => $tokenResult->accessToken,
+                    'token_type' => 'Bearer',
+                    'expires_at' => $token->expires_at->toDateTimeString()
+                ]);
+            } else {
+                return response()->json(['message' => 'Авторизовано максимальное количество пользователей'], 429);
+            }
+        }
+        return response()->json(['error' => 'Код неверный'], 422);
+    }
+
+    public function resendCode(Request $request)
+    {
+        $request->validate([
+            'username' => 'required',
+        ]);
+
+        $user = User::where('username', $request->username)->firstOrFail();
+
+        $lastCode = $user->twoFactorCodes()->orderBy('created_at', 'desc')->first();
+        if ($lastCode && $lastCode->created_at->diffInSeconds(now()) < 30) {
+            return response()->json(['message' => 'Запросите новый код через 30 секунд'], 429);
+        }
+        return $this->send2FACode($user);
+    }
+
     public function logout(Request $request)
     {
-        $request->user()->token()->delete();
-
+        $user = $request->user();
+        $token = $user->token();
+        $token->delete();
+        ItIsNotToken::where('token_id', $token->id)->delete();
         return response()->json(['message' => 'Вы вышли из аккаунта!'], 200);
     }
 
@@ -151,6 +168,7 @@ class AuthController extends Controller
     {
         $user = $request->user();
         $user->tokens->each(function ($token) {
+            ItIsNotToken::where('token_id', $token->id)->delete();
             $token->delete();
         });
 
