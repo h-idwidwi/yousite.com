@@ -10,12 +10,14 @@ Route::middleware('CheckPermission')->group(function () {
     Route::prefix('ref')->group(function () {
         Route::prefix('user')->group(function () {
             Route::get('/', [UserController::class, 'getUsers'])->name('getUsers');
-            Route::get('{id}/role', [UserController::class, 'getUserRoles'])->name('getUserRoles');
-            Route::post('{id}/role', [UserController::class, 'giveUserRoles'])->name('giveUserRoles');
-            Route::delete('{id}/role/{r_id}', [UserController::class, 'hardDeleteRole'])->name('userHardDeleteRole');
-            Route::delete('{id}/role/{r_id}/soft', [UserController::class, 'softDeleteRole'])->name('userSoftDeleteRole');
-            Route::post('{id}/role/{r_id}/restore', [UserController::class, 'restoreDeletedRole'])->name('userRestoreDeletedRole');
-            Route::post('{id}/update', [UserController::class, 'updateUser'])->name('updateUser');
+            Route::get('/{id}/role', [UserController::class, 'getUserRoles'])->name('getUserRoles');
+            Route::post('/{id}/role', [UserController::class, 'giveUserRoles'])->name('giveUserRoles');
+            Route::delete('/{id}/role/{r_id}', [UserController::class, 'hardDeleteRole'])->name('userHardDeleteRole');
+            Route::delete('/{id}/role/{r_id}/soft', [UserController::class, 'softDeleteRole'])->name('userSoftDeleteRole');
+            Route::post('/{id}/role/{r_id}/restore', [UserController::class, 'restoreDeletedRole'])->name('userRestoreDeletedRole');
+            Route::post('/{id}/update', [UserController::class, 'updateUser'])->name('updateUser');
+            Route::delete('/{id}/soft', [UserController::class, 'softDeleteUser'])->name('softDeleteUser');
+            Route::delete('/{id}', [UserController::class, 'hardDeleteUser'])->name('hardDeleteUser');
         });
 
         Route::prefix('policy')->group(function () {

@@ -20,6 +20,8 @@ return new class extends Migration
             $table->date('birthday');
             $table->rememberToken();
             $table->timestamps();
+            $table->timestamp('deleted_at')->nullable();
+            $table->integer('deleted_by')->nullable();
         });
     }
 

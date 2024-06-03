@@ -14,6 +14,7 @@ use App\DTO\UserAndRoleCollectionDTO;
 use App\Models\UsersAndRoles;
 use App\Http\Requests\CreateUserAndRoleRequest;
 use App\Http\Requests\UserRequest;
+use Illuminate\Support\Carbon;
 
 class UserController extends Controller
 {
@@ -150,5 +151,21 @@ class UserController extends Controller
 
         $user->update($updateData);
         return response()->json(new UpdateUserDTO($user->id, $user->username, $user->email, $user->password, $user->birthday, $user->created_at), 201);
+    }
+
+    public function hardDeleteUser($id)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $user->forceDelete();
+        return response()->json('Пользователь ликвидирован', 201);
+    }
+    public function softDeleteUser($id, Request $request)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $user->deleted_by = $request->user()->id;
+        $user->save();
+        $user->deleted_at = Carbon::now();
+        $user->delete();
+        return response()->json('Пользователь мягко удален', 201);
     }
 }
