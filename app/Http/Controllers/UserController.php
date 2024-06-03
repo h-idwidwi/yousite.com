@@ -14,6 +14,7 @@ use App\DTO\UserAndRoleCollectionDTO;
 use App\Models\UsersAndRoles;
 use App\Http\Requests\CreateUserAndRoleRequest;
 use App\Http\Requests\UserRequest;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
@@ -207,6 +208,65 @@ class UserController extends Controller
             DB::commit();
 
             return response()->json(new UpdateUserDTO($user->id, $user->username, $user->email, $user->password, $user->birthday, $user->created_at), 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+    public function hardDeleteUser($id)
+    {
+        $user = request()->user();
+        $userToDelete = User::withTrashed()->findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            $before = $userToDelete->replicate();
+            $userToDelete->forceDelete();
+            $this->changeLogsController->createLogs('users', $userToDelete->id, $before, null, $user->id);
+            DB::commit();
+
+            return response()->json('Пользователь ликвидирован', 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+    public function softDeleteUser($id, Request $request)
+    {
+        $user = $request->user();
+        $userToDelete = User::withTrashed()->findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            $before = $userToDelete->replicate();
+            $userToDelete->deleted_by = $user->id;
+            $userToDelete->save();
+            $userToDelete->deleted_at = Carbon::now();
+            $userToDelete->delete();
+            $this->changeLogsController->createLogs('users', $userToDelete->id, $before, $userToDelete, $user->id);
+            DB::commit();
+
+            return response()->json('Пользователь мягко удален', 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+    public function restoreDeletedUser($id): JsonResponse
+    {
+        $user = request()->user();
+        $userToRestore = User::withTrashed()->findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            $before = $userToRestore->replicate();
+            $userToRestore->restore();
+            $userToRestore->deleted_by = null;
+            $userToRestore->save();
+            $this->changeLogsController->createLogs('users', $userToRestore->id, $before, $userToRestore, $user->id);
+            DB::commit();
+
+            return response()->json(new UserDTO($userToRestore->id, $userToRestore->username, $userToRestore->email, $userToRestore->birthday, $userToRestore->created_at), 201);
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;

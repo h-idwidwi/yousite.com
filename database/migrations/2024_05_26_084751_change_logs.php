@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('entity_id');
             $table->json('before');
             $table->json('after');
-            $table->integer('changed_by') ?? 1;
+            $table->integer('changed_by')->default(1);
             $table->timestamps();
         });
     }

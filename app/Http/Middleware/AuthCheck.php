@@ -12,7 +12,7 @@ class AuthCheck
     public function handle(Request $request, Closure $next): Response
     {
 
-        if ($request->user() && $request->user()->token) {
+        if ($request->user()) {
             return redirect()->route('me');
         }
         return $next($request);
