@@ -64,9 +64,14 @@ class ChangeLogsController extends Controller
                 DB::table($table)->insert(array_merge($prev_value, ['id' => $entity_id]));
                 $this->createLogs($table, $entity_id, null, $prev_value, $user->id);
             } else {
-                if (isset($prev_value['created_at']) && isset($prev_value['updated_at'])) {
-                    $prev_value['created_at'] = Carbon::createFromFormat('Y-m-d\TH:i:s.u\Z', $prev_value['created_at'])->format('Y-m-d H:i:s');
+                if (isset($prev_value['deleted_at'])) {
+                    $prev_value['deleted_at'] = Carbon::createFromFormat('Y-m-d\TH:i:s.u\Z', $prev_value['deleted_at'])->format('Y-m-d H:i:s');
+                }
+                if (isset($prev_value['updated_at'])){
                     $prev_value['updated_at'] = Carbon::createFromFormat('Y-m-d\TH:i:s.u\Z', $prev_value['updated_at'])->format('Y-m-d H:i:s');
+                }
+                if (isset($prev_value['created_at'])){
+                    $prev_value['created_at'] = Carbon::createFromFormat('Y-m-d\TH:i:s.u\Z', $prev_value['created_at'])->format('Y-m-d H:i:s');
                 }
                 DB::table($table)->where('id', $entity_id)->update($prev_value);
                 $this->createLogs($table, $entity_id, $current_value, $prev_value, $user->id);
