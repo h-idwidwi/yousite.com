@@ -168,4 +168,10 @@ class UserController extends Controller
         $user->delete();
         return response()->json('Пользователь мягко удален', 201);
     }
+    public function restoreDeletedUser($id): JsonResponse
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+        return response()->json(new UserDTO($user->id, $user->username, $user->email, $user->birthday, $user->created_at), 201);
+    }
 }

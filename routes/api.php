@@ -18,6 +18,7 @@ Route::middleware('CheckPermission')->group(function () {
             Route::post('/{id}/update', [UserController::class, 'updateUser'])->name('updateUser');
             Route::delete('/{id}/soft', [UserController::class, 'softDeleteUser'])->name('softDeleteUser');
             Route::delete('/{id}', [UserController::class, 'hardDeleteUser'])->name('hardDeleteUser');
+            Route::post('/{id}/restore', [UserController::class, 'restoreDeletedUser'])->name('restoreDeletedUser');
         });
 
         Route::prefix('policy')->group(function () {

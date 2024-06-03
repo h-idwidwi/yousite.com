@@ -16,6 +16,7 @@ class CheckPermission
             'updateUser' => ['Admin'],
             'softDeleteUser' => ['Admin'],
             'hardDeleteUser' => ['Admin'],
+            'restoreDeletedUser' => ['Admin'],
             'giveUserRoles' => ['Admin'],
             'hardDeleteRole' => ['Admin'],
             'softDeleteRole' => ['Admin'],
