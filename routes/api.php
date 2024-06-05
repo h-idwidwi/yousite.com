@@ -1,13 +1,19 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ChangeLogsController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\GitController;
 
+Route::post('/hooks/git', [GitController::class, 'startUpdate']);
 Route::middleware('CheckPermission')->group(function () {
     Route::prefix('ref')->group(function () {
+        Route::prefix('log')->group(function() {
+            Route::get('{id}/restore', [ChangeLogsController::class, 'restoreEntity']);
+        });
         Route::prefix('user')->group(function () {
             Route::get('/', [UserController::class, 'getUsers'])->name('getUsers');
             Route::get('{id}/role', [UserController::class, 'getUserRoles'])->name('getUserRoles');
@@ -16,6 +22,7 @@ Route::middleware('CheckPermission')->group(function () {
             Route::delete('{id}/role/{r_id}/soft', [UserController::class, 'softDeleteRole'])->name('userSoftDeleteRole');
             Route::post('{id}/role/{r_id}/restore', [UserController::class, 'restoreDeletedRole'])->name('userRestoreDeletedRole');
             Route::post('{id}/update', [UserController::class, 'updateUser'])->name('updateUser');
+            Route::post('{id}/story', [ChangeLogsController::class, 'getUserLogs'])->name('getUserLogs');
         });
 
         Route::prefix('policy')->group(function () {
@@ -27,6 +34,7 @@ Route::middleware('CheckPermission')->group(function () {
                 Route::delete('/{id}', [RoleController::class, 'hardDeleteRole'])->name('hardDeleteRole');
                 Route::delete('/{id}/soft', [RoleController::class, 'softDeleteRole'])->name('softDeleteRole');
                 Route::post('/{id}/restore', [RoleController::class, 'restoreDeletedRole'])->name('restoreDeletedRole');
+                Route::post('/{id}/story', [ChangeLogsController::class, 'getRoleLogs'])->name('getRoleLogs');
             });
 
             Route::prefix('permission')->group(function () {
@@ -37,6 +45,7 @@ Route::middleware('CheckPermission')->group(function () {
                 Route::delete('/{id}', [PermissionController::class, 'hardDeletePermission'])->name('hardDeletePermission');
                 Route::delete('/{id}/soft', [PermissionController::class, 'softDeletePermission'])->name('softDeletePermission');
                 Route::post('/{id}/restore', [PermissionController::class, 'restoreDeletedPermission'])->name('restoreDeletedPermission');
+                Route::post('/{id}/story', [ChangeLogsController::class, 'getPermissionLogs'])->name('getPermissionLogs');
             });
         });
     });
@@ -44,6 +53,8 @@ Route::middleware('CheckPermission')->group(function () {
 
 Route::prefix('auth')->group(function() {
     Route::post('login', [AuthController::class, 'login'])->name('login');
+    Route::post('/2fa/verify', [AuthController::class, 'confirm2FACode'])->middleware('IsExpiry');
+    Route::post('/2fa/resend', [AuthController::class, 'resendCode']);
     Route::middleware('AuthCheck')->group(function (){
         Route::post('register', [AuthController::class, 'register'])->name('register');
     });

@@ -37,7 +37,11 @@ class CheckPermission
             'addRolePermission' => ['Admin'],
             'hardDeleteRolePermission' => ['Admin'],
             'softDeleteRolePermission' => ['Admin'],
-            'restoreDeletedRolePermission' => ['Admin']
+            'restoreDeletedRolePermission' => ['Admin'],
+            'restoreEntity' => ['Admin'],
+            'getUserLogs' => ['Admin'],
+            'getRoleLogs' => ['Admin'],
+            'getPermissionLogs' => ['Admin'],
         ];
 
         $route = $request->route();

@@ -27,9 +27,12 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    // Определим отношение "многие ко многим" с моделью Role
     public function roles()
     {
         return $this->belongsToMany(Role::class, 'users_and_roles', 'user_id', 'role_id');
+    }
+    public function twoFactorCodes()
+    {
+        return $this->hasMany(TwoFactorCode::class);
     }
 }

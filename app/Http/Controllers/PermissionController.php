@@ -11,9 +11,17 @@ use Illuminate\Http\JsonResponse;
 use App\DTO\PermissionCollectionDTO;
 use App\Models\Permission;
 use App\Http\Requests\CreatePermissionRequest;
+use Illuminate\Support\Facades\DB;
 
 class PermissionController extends Controller
 {
+    protected $changeLogsController;
+
+    public function __construct(ChangeLogsController $changeLogsController)
+    {
+        $this->changeLogsController = $changeLogsController;
+    }
+
     public function getPermissions(): JsonResponse
     {
         $permissions = new PermissionCollectionDTO(Permission::all());
@@ -30,34 +38,46 @@ class PermissionController extends Controller
     {
         $user = $permissionRequest->user();
 
-        $newPermission = Permission::create([
-            'name' => $permissionRequest->input('name'),
-            'description' => $permissionRequest->input('description'),
-            'code' => $permissionRequest->input('code'),
-            'created_by' => $user->id,
-        ]);
+        DB::beginTransaction();
 
-        $role_id = $rolePermissionRequest->input('role_id');
-        $permission_id = $newPermission->id;
+        try {
+            $newPermission = Permission::create([
+                'name' => $permissionRequest->input('name'),
+                'description' => $permissionRequest->input('description'),
+                'code' => $permissionRequest->input('code'),
+                'created_by' => $user->id,
+            ]);
 
-        $count = RolesAndPermissions::where('role_id', $role_id)->where('permission_id', $permission_id)->count();
-        if ($count) {
-            return response()->json(['status' => 501]);
+            $role_id = $rolePermissionRequest->input('role_id');
+            $permission_id = $newPermission->id;
+
+            $count = RolesAndPermissions::where('role_id', $role_id)->where('permission_id', $permission_id)->count();
+            if ($count) {
+                return response()->json(['status' => 501]);
+            }
+
+            RolesAndPermissions::create([
+                'role_id' => $role_id,
+                'permission_id' => $permission_id,
+                'created_by' => $user->id
+            ]);
+
+            $this->changeLogsController->createLogs('permissions', $newPermission->id, null, $newPermission, $user->id);
+            DB::commit();
+
+            return response()->json(new PermissionCreateDTO($newPermission->id, $newPermission->name, $newPermission->description, $newPermission->code, $newPermission->created_by), 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
         }
-
-        RolesAndPermissions::create([
-            'role_id' => $role_id,
-            'permission_id' => $permission_id,
-            'created_by' => $user->id
-        ]);
-
-        return response()->json(new PermissionCreateDTO($newPermission->id, $newPermission->name, $newPermission->description, $newPermission->code, $newPermission->created_by), 201);
     }
 
     public function updatePermission(UpdatePermissionRequest $request, $id): JsonResponse
     {
+        $user = $request->user();
         $permission = Permission::findOrFail($id);
 
+        $before = $permission->replicate();
         $permissionDTO = $request->createDTO($permission->id);
 
         $updateData = array_filter([
@@ -70,30 +90,77 @@ class PermissionController extends Controller
             return !is_null($value);
         });
 
-        $permission->update($updateData);
+        DB::beginTransaction();
 
-        return response()->json(new PermissionDTO($permission->id, $permission->name, $permission->description, $permission->code, $permission->created_by, $permission->deleted_by));
+        try {
+            $permission->update($updateData);
+            $this->changeLogsController->createLogs('permissions', $permission->id, $before, $permission, $user->id);
+            DB::commit();
+
+            return response()->json(new PermissionDTO($permission->id, $permission->name, $permission->description, $permission->code, $permission->created_by, $permission->deleted_by));
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 
     public function hardDeletePermission($id): JsonResponse
     {
+        $user = request()->user();
         $permission = Permission::withTrashed()->findOrFail($id);
-        $permission->forceDelete();
-        return response()->json(['message' => 'Разрешение жестко удалено']);
+
+        DB::beginTransaction();
+
+        try {
+            $before = $permission->replicate();
+            $permission->forceDelete();
+            $this->changeLogsController->createLogs('permissions', $permission->id, $before, null, $user->id);
+            DB::commit();
+
+            return response()->json(['message' => 'Разрешение жестко удалено']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 
     public function softDeletePermission($id): JsonResponse
     {
+        $user = request()->user();
         $permission = Permission::findOrFail($id);
-        $permission->delete();
 
-        return response()->json(['message' => 'Разрешение мягко удалено'], 200);
+        DB::beginTransaction();
+
+        try {
+            $before = $permission->replicate();
+            $permission->delete();
+            $this->changeLogsController->createLogs('permissions', $permission->id, $before, $permission, $user->id);
+            DB::commit();
+
+            return response()->json(['message' => 'Разрешение мягко удалено'], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 
     public function restoreDeletedPermission($id): JsonResponse
     {
+        $user = request()->user();
         $permission = Permission::withTrashed()->findOrFail($id);
-        $permission->restore();
-        return response()->json(new PermissionDTO($permission->id, $permission->name, $permission->code, $permission->description, $permission->created_by, $permission->deleted_by));
+
+        DB::beginTransaction();
+
+        try {
+            $before = $permission->replicate();
+            $permission->restore();
+            $this->changeLogsController->createLogs('permissions', $permission->id, $before, $permission, $user->id);
+            DB::commit();
+
+            return response()->json(new PermissionDTO($permission->id, $permission->name, $permission->code, $permission->description, $permission->created_by, $permission->deleted_by));
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 }

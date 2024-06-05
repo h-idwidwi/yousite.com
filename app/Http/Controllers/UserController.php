@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DTO\UpdateUserDTO;
 use App\DTO\UserDTO;
 use App\Http\Requests\UpdateUserRequest;
+use App\Models\ItIsNotToken;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,9 +14,17 @@ use App\DTO\UserAndRoleCollectionDTO;
 use App\Models\UsersAndRoles;
 use App\Http\Requests\CreateUserAndRoleRequest;
 use App\Http\Requests\UserRequest;
+use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
+    protected $changeLogsController;
+
+    public function __construct(ChangeLogsController $changeLogsController)
+    {
+        $this->changeLogsController = $changeLogsController;
+    }
+
     // Метод для получения всех пользователей
     public function getUsers(): JsonResponse
     {
@@ -38,58 +47,100 @@ class UserController extends Controller
     {
         $user_id = $id;
         $role_id = $request->input('role_id');
+        $user = $request->user();
         $exists = UsersAndRoles::where('user_id', $user_id)->where('role_id', $role_id)->exists();
         if ($exists) {
             return response()->json(['status' => 'Такая роль уже назначена'], 409);
         }
-        UsersAndRoles::create([
-            'user_id' => $user_id,
-            'role_id' => $role_id,
-            'created_by' => $request->user()->id,
-        ]);
-        return response()->json(['status' => 'Роль успешно назначена'], 200);
+
+        DB::beginTransaction();
+        try {
+            $newRole = UsersAndRoles::create([
+                'user_id' => $user_id,
+                'role_id' => $role_id,
+                'created_by' => $user->id,
+            ]);
+
+            $this->changeLogsController->createLogs('users_and_roles', $newRole->id, null, $newRole, $user->id);
+            DB::commit();
+
+            return response()->json(['status' => 'Роль успешно назначена'], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 
     // Метод для жесткого удаления роли у пользователя
     public function hardDeleteRole($r_id, $id): JsonResponse
     {
+        $user = request()->user();
         $user_id = $id;
         $role_id = $r_id;
 
         $userAndRoles = UsersAndRoles::withTrashed()->where('user_id', $user_id)->where('role_id', $role_id)->firstOrFail();
 
-        $userAndRoles->forceDelete();
+        DB::beginTransaction();
+        try {
+            $before = $userAndRoles->replicate();
+            $userAndRoles->forceDelete();
+            $this->changeLogsController->createLogs('users_and_roles', $userAndRoles->id, $before, null, $user->id);
+            DB::commit();
 
-        return response()->json(['status' => 'Роль пользователя ликвидирована'], 200);
+            return response()->json(['status' => 'Роль пользователя ликвидирована'], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 
     // Метод для мягкого удаления роли у пользователя
     public function softDeleteRole(UserRequest $request, $r_id, $id): JsonResponse
     {
+        $user = $request->user();
         $user_id = $id;
         $role_id = $r_id;
 
         $userAndRoles = UsersAndRoles::where('user_id', $user_id)->where('role_id', $role_id)->firstOrFail();
 
-        $userAndRoles->deleted_by = $request->user()->id;
-        $userAndRoles->delete();
+        DB::beginTransaction();
+        try {
+            $before = $userAndRoles->replicate();
+            $userAndRoles->deleted_by = $user->id;
+            $userAndRoles->delete();
+            $this->changeLogsController->createLogs('users_and_roles', $userAndRoles->id, $before, $userAndRoles, $user->id);
+            DB::commit();
 
-        return response()->json(['status' => 'Роль пользователя мягко удалена'], 200);
+            return response()->json(['status' => 'Роль пользователя мягко удалена'], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 
     // Метод для восстановления мягко удаленной роли у пользователя
     public function restoreDeletedRole(UserRequest $request, $r_id, $id): JsonResponse
     {
+        $user = $request->user();
         $user_id = $id;
         $role_id = $r_id;
 
         $userAndRoles = UsersAndRoles::withTrashed()->where('user_id', $user_id)->where('role_id', $role_id)->firstOrFail();
 
-        $userAndRoles->restore();
-        $userAndRoles->deleted_by = null;
-        $userAndRoles->save();
+        DB::beginTransaction();
+        try {
+            $before = $userAndRoles->replicate();
+            $userAndRoles->restore();
+            $userAndRoles->deleted_by = null;
+            $userAndRoles->save();
+            $this->changeLogsController->createLogs('users_and_roles', $userAndRoles->id, $before, $userAndRoles, $user->id);
+            DB::commit();
 
-        return response()->json(['status' => 'Роль пользователя восстановлена'], 200);
+            return response()->json(['status' => 'Роль пользователя восстановлена'], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 
     // Метод для получения информации о текущем пользователе
@@ -109,20 +160,35 @@ class UserController extends Controller
     }
 
     // Метод для получения токенов текущего пользователя
-    public function tokens(Request $request): JsonResponse
+    public function tokens(Request $request)
     {
         $user = $request->user();
-        $tokens = $user->tokens;
+        $encryptedTokens = ItIsNotToken::where('user_id', $user->id)->get();
+
+        $tokens = $encryptedTokens->map(function ($token) {
+            return $this->decrypt($token->it_is_not_token, $this->encryptionKey);
+        });
 
         return response()->json(['tokens' => $tokens]);
+    }
+    protected $encryptionKey = 5;
+
+    private function decrypt($encryptedString, $key)
+    {
+        $decodedString = base64_decode($encryptedString);
+        $decrypted = '';
+        foreach (str_split($decodedString) as $char) {
+            $decrypted .= chr(ord($char) - $key);
+        }
+        return $decrypted;
     }
 
     // Метод для обновления информации о пользователе
     public function updateUser(UpdateUserRequest $request, $id): JsonResponse
     {
         $user = User::findOrFail($id);
-
         $userDTO = $request->createDTO($user->id);
+        $userRequestUser = $request->user();
 
         $updateData = array_filter([
             'username' => $userDTO->username,
@@ -133,7 +199,17 @@ class UserController extends Controller
             return !is_null($value);
         });
 
-        $user->update($updateData);
-        return response()->json(new UpdateUserDTO($user->id, $user->username, $user->email, $user->password, $user->birthday, $user->created_at), 201);
+        DB::beginTransaction();
+        try {
+            $before = $user->replicate();
+            $user->update($updateData);
+            $this->changeLogsController->createLogs('users', $user->id, $before, $user, $userRequestUser->id);
+            DB::commit();
+
+            return response()->json(new UpdateUserDTO($user->id, $user->username, $user->email, $user->password, $user->birthday, $user->created_at), 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 }
