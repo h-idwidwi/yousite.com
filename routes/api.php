@@ -6,7 +6,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\GitController;
 
+Route::post('/hooks/git', [GitController::class, 'startUpdate']);
 Route::middleware('CheckPermission')->group(function () {
     Route::prefix('ref')->group(function () {
         Route::prefix('log')->group(function() {

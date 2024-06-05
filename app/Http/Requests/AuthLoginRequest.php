@@ -16,7 +16,7 @@ class AuthLoginRequest extends FormRequest
     {
         return [
             'email' => 'required|string|email|max:255',
-            'password' => 'required|string|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[@$!%*?&#]).+$/',
+            'password' => 'required|string|min:8',
         ];
     }
 
