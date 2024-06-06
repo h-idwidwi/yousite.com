@@ -42,6 +42,9 @@ class CheckPermission
             'getUserLogs' => ['Admin'],
             'getRoleLogs' => ['Admin'],
             'getPermissionLogs' => ['Admin'],
+            'getLogs' => ['Admin'],
+            'getLog' => ['Admin'],
+            'deleteLog' => ['Admin'],
         ];
 
         $route = $request->route();

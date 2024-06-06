@@ -5,6 +5,7 @@ namespace App\Http;
 use App\Http\Middleware\AuthCheck;
 use App\Http\Middleware\Check;
 use App\Http\Middleware\CheckPermission;
+use App\Http\Middleware\MakeLog;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
 class Kernel extends HttpKernel
@@ -67,5 +68,6 @@ class Kernel extends HttpKernel
         'IsExpiry' => \App\Http\Middleware\isExpiry::class,
         'AuthCheck' => \App\Http\Middleware\AuthCheck::class,
         'CheckPermission' => CheckPermission::class,
+        'MakeLog' => MakeLog::class,
     ];
 }

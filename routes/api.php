@@ -7,12 +7,16 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\GitController;
+use App\Http\Controllers\LogRequestController;
 
 Route::post('/hooks/git', [GitController::class, 'startUpdate']);
-Route::middleware('CheckPermission')->group(function () {
+Route::middleware(['CheckPermission', 'MakeLog'])->group(function () {
     Route::prefix('ref')->group(function () {
         Route::prefix('log')->group(function() {
             Route::get('{id}/restore', [ChangeLogsController::class, 'restoreEntity']);
+            Route::get('/request', [LogRequestController::class, 'getLogs'])->name('getLogs');
+            Route::get('/request/{id}', [LogRequestController::class, 'getLog'])->name('getLog');
+            Route::delete('/request/{id}', [LogRequestController::class, 'deleteLog'])->name('deleteLog');
         });
         Route::prefix('user')->group(function () {
             Route::get('/', [UserController::class, 'getUsers'])->name('getUsers');
