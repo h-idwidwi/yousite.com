@@ -26,16 +26,16 @@ class ReportController extends Controller
         $entity = ChangeLogs::select('entity_type', DB::raw('count(*) as total'))->where('created_at', '>=', $reportCreate)->groupBy('entity_type')->orderByDesc('total')->get();
 
         // Рейтинг пользователей по запросам
-        $userRequest = LogRequests::select('user_id', DB::raw('count(*) as total'))->where('created_at', '>=', $reportCreate)->groupBy('user_id')->orderByDesc('total')->get();
+        $userRequest = User::select('users.id', 'users.username', DB::raw('count(*) as total'))->join('logs_requests', 'users.id', '=', 'logs_requests.user_id')->groupBy('users.id', 'users.username')->orderByDesc('total')->get();
 
         // Рейтинг пользователей по авторизациям
-        $userLogin = LogRequests::select('user_id', DB::raw('count(*) as total'))->where('created_at', '>=', $reportCreate)->where('controller_method', 'login')->groupBy('user_id')->orderByDesc('total')->get();
+        $userLogin = User::select('users.id', 'users.username', DB::raw('count(*) as total'))->join('logs_requests', 'users.id', '=', 'logs_requests.user_id')->groupBy('users.id', 'users.username')->where('controller_method', '=', 'login')->orderByDesc('total')->get();
 
         // Рейтинг пользователей по разрешениям
         $userPermissions = User::select('users.id', 'users.username', DB::raw('count(*) as total_permissions'))->join('users_and_roles', 'users.id', '=', 'users_and_roles.user_id')->join('roles', 'users_and_roles.role_id', '=', 'roles.id')->join('roles_and_permissions', 'roles.id', '=', 'roles_and_permissions.role_id')->groupBy('users.id', 'users.username')->orderByDesc('total_permissions')->get();
 
         // Рейтинг пользователей по изменениям
-        $userChanges = ChangeLogs::select('changed_by', DB::raw('count(*) as total'))->where('created_at', '>=', $reportCreate)->groupBy('changed_by')->orderByDesc('total')->get();
+        $userChanges = User::select('users.id', 'users.username', DB::raw('count(*) as total'))->join('change_logs', 'users.id', '=', 'change_logs.changed_by')->groupBy('users.id', 'users.username')->orderByDesc('total')->get();
 
         $reportData = [
             'method' => $method,
