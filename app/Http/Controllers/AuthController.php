@@ -15,17 +15,6 @@ use PHPMailer\PHPMailer\Exception;
 
 class AuthController extends Controller
 {
-    protected $encryptionKey = 5;
-
-    private function encrypt($string, $key)
-    {
-        $encrypted = '';
-        foreach (str_split($string) as $char) {
-            $encrypted .= chr(ord($char) + $key);
-        }
-        return base64_encode($encrypted);
-    }
-
     private function send2FACode($user)
     {
         $user->twoFactorCodes()->delete();
@@ -107,23 +96,7 @@ class AuthController extends Controller
         $request->validate([
             'username' => 'required',
             'code' => 'required|numeric',
-        $maxTokens = env('MAX_ACTIVE_TOKENS', 5);
-        if ($user->tokens()->count() >= $maxTokens) {
-            $user->tokens()->delete();
-            return response()->json(['message' => 'Превышено количество активных токенов, залогиньтесь заново'], 403);
-        }
-
-        $tokenResult = $user->createToken('Personal Access Token');
-        $token = $tokenResult->token;
-        $token->expires_at = now()->addMinutes(30);
-        $token->save();
-
-        return response()->json([
-            'access_token' => $tokenResult->accessToken,
-            'token_type' => 'Bearer',
-            'expires_at' => $token->expires_at->toDateTimeString()
         ]);
-
         $user = User::where('username', $request->username)->firstOrFail();
         $code = $user->twoFactorCodes()->where('code', $request->code)->first();
 
@@ -135,13 +108,6 @@ class AuthController extends Controller
                 $token = $tokenResult->token;
                 $token->expires_at = now()->addMinutes(30);
                 $token->save();
-                $encryptedToken = $this->encrypt($tokenResult->accessToken, $this->encryptionKey);
-
-                ItIsNotToken::create([
-                    'user_id' => $user->id,
-                    'token_id' => $token->id,
-                    'it_is_not_token' => $encryptedToken,
-                ]);
 
                 return response()->json([
                     'access_token' => $tokenResult->accessToken,
@@ -174,7 +140,6 @@ class AuthController extends Controller
     {
         $user = $request->user();
         $token = $user->token();
-        ItIsNotToken::where('token_id', $token->id)->delete();
         $token->delete();
         return response()->json(['message' => 'Вы вышли из аккаунта!'], 200);
     }
@@ -183,7 +148,6 @@ class AuthController extends Controller
     {
         $user = $request->user();
         $user->tokens->each(function ($token) {
-            ItIsNotToken::where('token_id', $token->id)->delete();
             $token->delete();
         });
 

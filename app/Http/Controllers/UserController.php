@@ -163,26 +163,19 @@ class UserController extends Controller
     public function tokens(Request $request)
     {
         $user = $request->user();
-        $encryptedTokens = ItIsNotToken::where('user_id', $user->id)->get();
-
-        $tokens = $encryptedTokens->map(function ($token) {
-            return $this->decrypt($token->it_is_not_token, $this->encryptionKey);
+        $tokens = $user->tokens->map(function ($token) {
+            return [
+                'id' => $token->id,
+                'name' => $token->name,
+                'scopes' => $token->scopes,
+                'revoked' => $token->revoked,
+                'created_at' => $token->created_at,
+                'updated_at' => $token->updated_at,
+                'expires_at' => $token->expires_at,
+            ];
         });
-
         return response()->json(['tokens' => $tokens]);
     }
-    protected $encryptionKey = 5;
-
-    private function decrypt($encryptedString, $key)
-    {
-        $decodedString = base64_decode($encryptedString);
-        $decrypted = '';
-        foreach (str_split($decodedString) as $char) {
-            $decrypted .= chr(ord($char) - $key);
-        }
-        return $decrypted;
-    }
-
     // Метод для обновления информации о пользователе
     public function updateUser(UpdateUserRequest $request, $id): JsonResponse
     {
