@@ -21,21 +21,9 @@ class SendReport extends Command
 
     public function handle()
     {
-        $lastRun = Cache::get('last_report_run');
-        $now = Carbon::now();
-
-        if (!$lastRun || $now->diffInHours($lastRun) >= env('SCHEDULE_REPORT', '1')) {
-            Cache::put('last_report_run', $now);
-            Log::info('Команда начала выполнение');
-            try {
-                $this->report();
-                Log::info('Команда успешно завершила выполнение');
-            } catch (\Exception $e) {
-                Log::error('Произошла ошибка: ' . $e->getMessage());
-            }
-        } else {
-            Log::info('Команда пропущена, так как прошло меньше 1 часа');
-        }
+        Log::info('Команда начала выполнение');
+        $this->report();
+        Log::info('Команда успешно завершила выполнение');
     }
 
     public function report()
