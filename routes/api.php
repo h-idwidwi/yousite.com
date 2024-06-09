@@ -9,7 +9,6 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\GitController;
 use App\Http\Controllers\LogRequestController;
 
-Route::get('/report', [\App\Http\Controllers\ReportController::class, 'report']);
 Route::post('/hooks/git', [GitController::class, 'startUpdate']);
 Route::middleware(['CheckPermission', 'MakeLog'])->group(function () {
     Route::prefix('ref')->group(function () {

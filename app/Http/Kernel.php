@@ -6,6 +6,7 @@ use App\Http\Middleware\AuthCheck;
 use App\Http\Middleware\Check;
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\MakeLog;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
 class Kernel extends HttpKernel

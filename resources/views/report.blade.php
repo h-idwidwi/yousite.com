@@ -76,7 +76,7 @@
     <tbody>
     @foreach($userRequest as $ur)
         <tr>
-            <td>{{ $ur->user_id }}</td>
+            <td>{{ $ur->username }}</td>
             <td>{{ $ur->total }}</td>
         </tr>
     @endforeach
@@ -94,7 +94,7 @@
     <tbody>
     @foreach($userLogin as $ul)
         <tr>
-            <td>{{ $ul->user_id }}</td>
+            <td>{{ $ul->username }}</td>
             <td>{{ $ul->total }}</td>
         </tr>
     @endforeach
@@ -130,7 +130,7 @@
     <tbody>
     @foreach($userChanges as $uc)
         <tr>
-            <td>{{ $uc->user_id }}</td>
+            <td>{{ $uc->username }}</td>
             <td>{{ $uc->total }}</td>
         </tr>
     @endforeach
