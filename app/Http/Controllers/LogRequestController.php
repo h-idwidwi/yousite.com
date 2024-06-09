@@ -13,11 +13,27 @@ class LogRequestController extends Controller
     {
         LogRequests::where('created_at', '<', Carbon::now()->subHours(73))->delete();
         $logs = LogRequests::query();
+
+        if ($request->has('filter')) {
+            $filters = $request->filter;
+            foreach ($filters as $filter) {
+                $logs->where($filter['key'], $filter['value']);
+            }
+        }
+
+        if ($request->has('sortBy')) {
+            $sortsBy = $request->sortBy;
+            foreach ($sortsBy as $sortBy) {
+                $logs->orderBy($sortBy['key'], $sortBy['value']);
+            }
+        }
+
         $count = $request->input('count', 10);
         $logs = $logs->paginate($count);
 
         $logs->getCollection()->transform(function ($log) {
             return [
+                'id' => $log->id,
                 'url' => $log->url,
                 'method' => $log->method,
                 'controller' => $log->controller,
