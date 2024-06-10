@@ -33,19 +33,10 @@ class LogRequestController extends Controller
 
         $logs->getCollection()->transform(function ($log) {
             return [
-                'id' => $log->id,
                 'url' => $log->url,
-                'method' => $log->method,
                 'controller' => $log->controller,
                 'controller_method' => $log->controller_method,
-                'request_body' => $log->request_body,
-                'request_headers' => $log->request_headers,
-                'user_id' => $log->user_id,
-                'user_ip' => $log->user_ip,
-                'user_agent' => $log->user_agent,
                 'response_status' => $log->response_status,
-                'response_body' => $log->response_body,
-                'response_headers' => $log->response_hesders,
                 'called_at' => $log->called_at,
             ];
         });
